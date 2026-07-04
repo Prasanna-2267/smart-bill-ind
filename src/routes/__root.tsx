@@ -98,6 +98,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Veda POS — Restaurant Billing System" },
+      { name: "description", content: "Fast, mobile-first billing & POS for restaurants, cafés and bakeries. Menu, GST, AC charges, orders and sales trends in one clean app." },
+      { property: "og:description", content: "Fast, mobile-first billing & POS for restaurants, cafés and bakeries. Menu, GST, AC charges, orders and sales trends in one clean app." },
+      { name: "twitter:description", content: "Fast, mobile-first billing & POS for restaurants, cafés and bakeries. Menu, GST, AC charges, orders and sales trends in one clean app." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7f031f83-ab3b-4f82-9dc1-b4258aa84148/id-preview-10f6e8b6--bccea308-3bb2-4c0f-8ad3-abc4d796d615.lovable.app-1783138098270.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7f031f83-ab3b-4f82-9dc1-b4258aa84148/id-preview-10f6e8b6--bccea308-3bb2-4c0f-8ad3-abc4d796d615.lovable.app-1783138098270.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
