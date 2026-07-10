@@ -13,6 +13,7 @@ import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as MenuRouteImport } from './routes/menu'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -36,6 +37,11 @@ const MenuRoute = MenuRouteImport.update({
   path: '/menu',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
@@ -50,6 +56,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/checkout': typeof CheckoutRoute
+  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
   '/settings': typeof SettingsRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/checkout': typeof CheckoutRoute
+  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
   '/settings': typeof SettingsRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/checkout': typeof CheckoutRoute
+  '/login': typeof LoginRoute
   '/menu': typeof MenuRoute
   '/orders': typeof OrdersRoute
   '/settings': typeof SettingsRoute
@@ -74,13 +83,16 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/checkout' | '/menu' | '/orders' | '/settings' | '/trends'
+  fullPaths:
+    '/' | '/checkout' | '/login' | '/menu' | '/orders' | '/settings' | '/trends'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/checkout' | '/menu' | '/orders' | '/settings' | '/trends'
+  to:
+    '/' | '/checkout' | '/login' | '/menu' | '/orders' | '/settings' | '/trends'
   id:
     | '__root__'
     | '/'
     | '/checkout'
+    | '/login'
     | '/menu'
     | '/orders'
     | '/settings'
@@ -90,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CheckoutRoute: typeof CheckoutRoute
+  LoginRoute: typeof LoginRoute
   MenuRoute: typeof MenuRoute
   OrdersRoute: typeof OrdersRoute
   SettingsRoute: typeof SettingsRoute
@@ -126,6 +139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checkout': {
       id: '/checkout'
       path: '/checkout'
@@ -146,6 +166,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CheckoutRoute: CheckoutRoute,
+  LoginRoute: LoginRoute,
   MenuRoute: MenuRoute,
   OrdersRoute: OrdersRoute,
   SettingsRoute: SettingsRoute,
@@ -154,3 +175,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -11,15 +11,26 @@ export const Route = createFileRoute("/")({
 function BillingPage() {
   const { menu, cart, setQty, settings } = usePos();
   const [query, setQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const navigate = useNavigate();
+
+  const categories = useMemo(() => {
+    return ["All", ...Array.from(new Set(menu.map((m) => m.category)))];
+  }, [menu]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return menu;
-    return menu.filter(
-      (m) => m.code.includes(q) || m.name.toLowerCase().includes(q),
-    );
-  }, [menu, query]);
+    let result = menu;
+    if (selectedCategory !== "All") {
+      result = result.filter((m) => m.category === selectedCategory);
+    }
+    if (q) {
+      result = result.filter(
+        (m) => m.code.includes(q) || m.name.toLowerCase().includes(q),
+      );
+    }
+    return result;
+  }, [menu, query, selectedCategory]);
 
   const cartLines = useMemo(
     () =>
@@ -66,6 +77,21 @@ function BillingPage() {
             placeholder="Search by name or 3-digit code (e.g. 103)"
             className="h-11 w-full rounded-xl bg-zinc-100 pl-10 pr-4 text-sm outline-none ring-0 placeholder:text-zinc-500 focus:ring-2 focus:ring-brand/30"
           />
+        </div>
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-medium transition ${
+                selectedCategory === cat
+                  ? "bg-zinc-900 text-white"
+                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
       </div>
 

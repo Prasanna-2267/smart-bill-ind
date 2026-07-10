@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Search, Receipt } from "lucide-react";
-import { usePos, inr } from "@/lib/pos-store";
+import { usePos, inr, type Order } from "@/lib/pos-store";
 import { AppShell, PageHeader } from "@/components/pos/AppShell";
+import { BillDialog } from "@/components/pos/BillDialog";
 
 export const Route = createFileRoute("/orders")({
   component: OrdersPage,
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/orders")({
 function OrdersPage() {
   const { orders } = usePos();
   const [query, setQuery] = useState("");
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -54,7 +56,8 @@ function OrdersPage() {
           return (
             <article
               key={o.billNo}
-              className="rounded-2xl bg-white p-4 ring-1 ring-border shadow-pos"
+              onClick={() => setSelectedOrder(o)}
+              className="rounded-2xl bg-white p-4 ring-1 ring-border shadow-pos cursor-pointer transition active:scale-[0.99] hover:ring-brand/30"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -101,6 +104,13 @@ function OrdersPage() {
           );
         })}
       </div>
+
+      {selectedOrder && (
+        <BillDialog
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+        />
+      )}
     </AppShell>
   );
 }

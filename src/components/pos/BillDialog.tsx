@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X, Printer } from "lucide-react";
 import { usePos, inr, type Order } from "@/lib/pos-store";
 
 export function BillDialog({ order, onClose }: { order: Order; onClose: () => void }) {
@@ -69,12 +69,21 @@ export function BillDialog({ order, onClose }: { order: Order; onClose: () => vo
 
         <p className="mt-4 text-center text-[11px] italic text-zinc-500">{settings.footer}</p>
 
-        <button
-          onClick={onClose}
-          className="mt-5 h-12 w-full rounded-2xl bg-zinc-950 text-sm font-medium text-white active:scale-[0.99]"
-        >
-          Done
-        </button>
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={() => window.print()}
+            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-zinc-100 text-sm font-medium text-zinc-900 transition hover:bg-zinc-200 active:scale-[0.99]"
+          >
+            <Printer className="size-4" />
+            Print Bill
+          </button>
+          <button
+            onClick={onClose}
+            className="h-12 flex-1 rounded-2xl bg-zinc-950 text-sm font-medium text-white transition hover:bg-zinc-900 active:scale-[0.99]"
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );

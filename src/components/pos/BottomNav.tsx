@@ -11,6 +11,9 @@ const TABS = [
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  
+  if (pathname === "/login") return null;
+
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <div className="mx-auto flex h-[68px] max-w-[720px] items-center justify-around px-2 pb-[env(safe-area-inset-bottom)]">
