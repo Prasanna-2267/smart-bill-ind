@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Banknote, Smartphone, Snowflake, Store, ShoppingBag, Check } from "lucide-react";
+import { toast } from "sonner";
 import { usePos, inr, type OrderType, type PaymentMode, type AcMode, type Order } from "@/lib/pos-store";
 import { AppShell } from "@/components/pos/AppShell";
 import { BillDialog } from "@/components/pos/BillDialog";
@@ -11,7 +12,7 @@ export const Route = createFileRoute("/checkout")({
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const { cart, menu, settings, addOrder, clearCart } = usePos();
+  const { cart, menu, settings, submitOrder, clearCart } = usePos();
 
   const lines = useMemo(
     () =>
@@ -28,6 +29,7 @@ function CheckoutPage() {
   const [acMode, setAcMode] = useState<AcMode>("Non-AC");
   const [payment, setPayment] = useState<PaymentMode | null>(null);
   const [bill, setBill] = useState<Order | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   const gstAmount = settings.gstEnabled ? Math.round(subtotal * (settings.gstPct / 100)) : 0;
@@ -53,25 +55,24 @@ function CheckoutPage() {
     );
   }
 
-  function generateBill() {
+  async function generateBill() {
     if (!payment) return;
-    const now = new Date();
-    const order: Order = {
-      billNo: `INV${String(Date.now()).slice(-8)}`,
-      date: now.toISOString(),
-      items: lines,
-      subtotal,
-      gstPct: settings.gstEnabled ? settings.gstPct : 0,
-      gstAmount,
-      acCharge,
-      total,
-      paymentMode: payment,
-      orderType,
-      acMode: orderType === "Dine-In" && settings.acEnabled ? acMode : undefined,
-    };
-    addOrder(order);
-    setBill(order);
-    clearCart();
+    setIsSubmitting(true);
+    try {
+      const itemsPayload = lines.map(l => ({ code: l.code, quantity: l.qty }));
+      const order = await submitOrder(
+        payment.toUpperCase(), 
+        orderType, 
+        acMode === "AC", 
+        itemsPayload
+      );
+      setBill(order);
+      clearCart();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit order.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -164,12 +165,12 @@ function CheckoutPage() {
 
       <div className="fixed inset-x-0 bottom-[68px] z-30 mx-auto max-w-[720px] px-4 pb-3">
         <button
-          disabled={!payment}
+          disabled={!payment || isSubmitting}
           onClick={generateBill}
           className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-brand text-base font-semibold text-brand-foreground shadow-lg shadow-brand/20 transition active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-500 disabled:shadow-none"
         >
           <Check className="size-5" />
-          {payment ? `Generate Bill · ${inr(total)}` : "Select payment mode"}
+          {isSubmitting ? "Generating Bill..." : (payment ? `Generate Bill · ${inr(total)}` : "Select payment mode")}
         </button>
       </div>
 

@@ -1,16 +1,20 @@
 import { useState, type ReactNode } from "react";
-import { Lock } from "lucide-react";
+import { Lock, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 export function PasswordGate({
   title,
+  gateType,
   children,
 }: {
   title: string;
+  gateType: "menu" | "settings";
   children: ReactNode;
 }) {
   const [unlocked, setUnlocked] = useState(false);
   const [value, setValue] = useState("");
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   if (unlocked) return <>{children}</>;
 
@@ -22,13 +26,22 @@ export function PasswordGate({
       <h2 className="text-lg font-semibold text-zinc-950">{title}</h2>
       <p className="mt-1 text-sm text-zinc-500">Enter the manager PIN to continue.</p>
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          if (value === "000") {
+          if (value.length === 0) return;
+          
+          setLoading(true);
+          try {
+            await apiFetch("/auth/verify-gate", {
+              method: "POST",
+              body: JSON.stringify({ type: gateType, password: value })
+            });
             setUnlocked(true);
-          } else {
+          } catch (err) {
             setError(true);
             setValue("");
+          } finally {
+            setLoading(false);
           }
         }}
         className="mt-6 w-full space-y-3"
@@ -37,9 +50,12 @@ export function PasswordGate({
           autoFocus
           type="password"
           inputMode="numeric"
+          pattern="[0-9]{3}"
+          maxLength={3}
           value={value}
           onChange={(e) => {
-            setValue(e.target.value);
+            const val = e.target.value.replace(/\D/g, "");
+            setValue(val);
             setError(false);
           }}
           placeholder="•  •  •"
@@ -49,12 +65,13 @@ export function PasswordGate({
               : "ring-border focus:ring-2 focus:ring-brand/40"
           }`}
         />
-        {error && <p className="text-xs text-destructive">Incorrect PIN. Try 000.</p>}
+        {error && <p className="text-xs text-destructive">Incorrect password.</p>}
         <button
           type="submit"
-          className="h-12 w-full rounded-2xl bg-brand text-sm font-medium text-brand-foreground shadow-lg shadow-brand/20 active:scale-[0.99]"
+          disabled={loading}
+          className="h-12 w-full flex items-center justify-center rounded-2xl bg-brand text-sm font-medium text-brand-foreground shadow-lg shadow-brand/20 active:scale-[0.99] disabled:opacity-70"
         >
-          Unlock
+          {loading ? <Loader2 className="size-4 animate-spin" /> : "Unlock"}
         </button>
       </form>
     </div>

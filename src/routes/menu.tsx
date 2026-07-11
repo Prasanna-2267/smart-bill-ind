@@ -9,8 +9,8 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/menu")({
   component: () => (
-    <AppShell header={<PageHeader title="Edit Menu" subtitle="Manager access" />}>
-      <PasswordGate title="Menu Editor Locked">
+    <AppShell header={<PageHeader title="Menu Manager" subtitle="Add, edit or remove dishes" />}>
+      <PasswordGate title="Menu Locked" gateType="menu">
         <MenuEditor />
       </PasswordGate>
     </AppShell>
@@ -69,10 +69,14 @@ function MenuEditor() {
                 <Pencil className="size-4" />
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (confirm(`Delete ${m.name}?`)) {
-                    deleteMenu(m.code);
-                    toast.success("Item deleted");
+                    try {
+                      await deleteMenu(m.code);
+                      toast.success("Item deleted");
+                    } catch (err: any) {
+                      toast.error("Failed to delete item");
+                    }
                   }
                 }}
                 className="grid size-9 place-items-center rounded-lg bg-red-50 text-red-600 active:scale-95"
@@ -103,8 +107,8 @@ function MenuEditor() {
             setEditing(null);
             setCreating(false);
           }}
-          onSubmit={(item) => {
-            const err = editing ? updateMenu(editing.code, item) : addMenu(item);
+          onSubmit={async (item) => {
+            const err = editing ? await updateMenu(editing.code, item) : await addMenu(item);
             if (err) {
               toast.error(err);
               return false;
@@ -125,7 +129,7 @@ function ItemForm({
 }: {
   initial?: MenuItem;
   onClose: () => void;
-  onSubmit: (item: MenuItem) => boolean;
+  onSubmit: (item: MenuItem) => Promise<boolean>;
 }) {
   const [code, setCode] = useState(initial?.code ?? "");
   const [name, setName] = useState(initial?.name ?? "");
@@ -135,9 +139,9 @@ function ItemForm({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center">
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          const ok = onSubmit({ code, name: name.trim(), price: Number(price), category });
+          const ok = await onSubmit({ code, name: name.trim(), price: Number(price), category });
           if (ok) onClose();
         }}
         className="w-full max-w-md rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl"

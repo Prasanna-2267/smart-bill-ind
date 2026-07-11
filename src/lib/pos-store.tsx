@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { DEFAULT_MENU, type MenuItem } from "./menu-data";
+import { type MenuItem } from "./menu-data";
+import { apiFetch, getAuthToken } from "./api";
 
 export type OrderType = "Dine-In" | "Take Away";
 export type PaymentMode = "Cash" | "UPI";
@@ -13,6 +14,7 @@ export type OrderLine = {
 };
 
 export type Order = {
+  id?: string;
   billNo: string;
   date: string; // ISO
   items: OrderLine[];
@@ -39,81 +41,114 @@ export type Settings = {
 };
 
 const DEFAULT_SETTINGS: Settings = {
-  restaurantName: "Veda Kitchen",
-  address: "12, Anna Salai, Chennai 600002",
-  phone: "+91 98765 43210",
-  gstNumber: "33ABCDE1234F1Z5",
+  restaurantName: "My Restaurant",
+  address: "",
+  phone: "",
+  gstNumber: "",
   footer: "Thank you! Visit again.",
-  gstEnabled: true,
-  gstPct: 5,
-  acEnabled: true,
-  acCharge: 30,
+  gstEnabled: false,
+  gstPct: 0,
+  acEnabled: false,
+  acCharge: 0,
 };
 
 type Cart = Record<string, number>; // code -> qty
 
 type Ctx = {
   menu: MenuItem[];
-  addMenu: (m: MenuItem) => string | null;
-  updateMenu: (originalCode: string, m: MenuItem) => string | null;
-  deleteMenu: (code: string) => void;
+  addMenu: (m: MenuItem) => Promise<string | null>;
+  updateMenu: (originalCode: string, m: MenuItem) => Promise<string | null>;
+  deleteMenu: (code: string) => Promise<void>;
   cart: Cart;
   setQty: (code: string, qty: number) => void;
   clearCart: () => void;
   orders: Order[];
-  addOrder: (o: Order) => void;
+  submitOrder: (paymentMode: string, diningType: string, isAC: boolean, items: {code: string, quantity: number}[]) => Promise<Order>;
   settings: Settings;
-  updateSettings: (s: Partial<Settings>) => void;
+  updateSettings: (s: Partial<Settings>) => Promise<string | null>;
+  loading: boolean;
 };
 
 const PosCtx = createContext<Ctx | null>(null);
 
-function usePersistedState<T>(key: string, initial: T): [T, (v: T | ((p: T) => T)) => void] {
-  const [state, setState] = useState<T>(initial);
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) setState(JSON.parse(raw));
-    } catch {}
-    setLoaded(true);
-  }, [key]);
-  useEffect(() => {
-    if (!loaded) return;
-    try {
-      localStorage.setItem(key, JSON.stringify(state));
-    } catch {}
-  }, [key, state, loaded]);
-  return [state, setState];
-}
-
 export function PosProvider({ children }: { children: ReactNode }) {
-  const [menu, setMenu] = usePersistedState<MenuItem[]>("pos.menu", DEFAULT_MENU);
+  const [menu, setMenu] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<Cart>({});
-  const [orders, setOrders] = usePersistedState<Order[]>("pos.orders", []);
-  const [settings, setSettings] = usePersistedState<Settings>("pos.settings", DEFAULT_SETTINGS);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch initial data
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    const loadData = async () => {
+      try {
+        const [menuData, settingsData, ordersData] = await Promise.allSettled([
+          apiFetch("/menu"),
+          apiFetch("/settings"),
+          apiFetch("/orders")
+        ]);
+
+        if (menuData.status === "fulfilled") setMenu(menuData.value);
+        if (settingsData.status === "fulfilled" && settingsData.value) setSettings(settingsData.value);
+        if (ordersData.status === "fulfilled") setOrders(ordersData.value);
+      } catch (err) {
+        console.error("Failed to fetch POS data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const value = useMemo<Ctx>(
     () => ({
       menu,
-      addMenu: (m) => {
-        if (!/^\d{3}$/.test(m.code)) return "Item code must be exactly 3 digits";
-        if (menu.some((i) => i.code === m.code)) return "Item code already exists";
-        setMenu((prev) => [...prev, m].sort((a, b) => a.code.localeCompare(b.code)));
-        return null;
+      loading,
+      addMenu: async (m) => {
+        try {
+          const newItem = await apiFetch("/menu", {
+            method: "POST",
+            body: JSON.stringify(m)
+          });
+          setMenu((prev) => [...prev, newItem].sort((a, b) => a.code.localeCompare(b.code)));
+          return null;
+        } catch (err: any) {
+          return err.message || "Failed to add item";
+        }
       },
-      updateMenu: (originalCode, m) => {
-        if (!/^\d{3}$/.test(m.code)) return "Item code must be exactly 3 digits";
-        if (m.code !== originalCode && menu.some((i) => i.code === m.code))
-          return "Item code already exists";
-        setMenu((prev) =>
-          prev
-            .map((i) => (i.code === originalCode ? m : i))
-            .sort((a, b) => a.code.localeCompare(b.code)),
-        );
-        return null;
+      updateMenu: async (originalCode, m) => {
+        try {
+          const updatedItem = await apiFetch(`/menu/${originalCode}`, {
+            method: "PUT",
+            body: JSON.stringify(m)
+          });
+          setMenu((prev) =>
+            prev
+              .map((i) => (i.code === originalCode ? updatedItem : i))
+              .sort((a, b) => a.code.localeCompare(b.code)),
+          );
+          return null;
+        } catch (err: any) {
+          return err.message || "Failed to update item";
+        }
       },
-      deleteMenu: (code) => setMenu((prev) => prev.filter((i) => i.code !== code)),
+      deleteMenu: async (code) => {
+        try {
+          await apiFetch(`/menu/${code}`, {
+            method: "DELETE"
+          });
+          setMenu((prev) => prev.filter((i) => i.code !== code));
+        } catch (err: any) {
+          console.error("Failed to delete item", err);
+          throw err;
+        }
+      },
       cart,
       setQty: (code, qty) =>
         setCart((prev) => {
@@ -124,11 +159,29 @@ export function PosProvider({ children }: { children: ReactNode }) {
         }),
       clearCart: () => setCart({}),
       orders,
-      addOrder: (o) => setOrders((prev) => [o, ...prev]),
+      submitOrder: async (paymentMode, diningType, isAC, items) => {
+        const newOrder = await apiFetch("/orders", {
+          method: "POST",
+          body: JSON.stringify({ paymentMode, diningType, isAC, items })
+        });
+        setOrders((prev) => [newOrder, ...prev]);
+        return newOrder;
+      },
       settings,
-      updateSettings: (s) => setSettings((prev) => ({ ...prev, ...s })),
+      updateSettings: async (s) => {
+        try {
+          const updated = await apiFetch("/settings", {
+            method: "PUT",
+            body: JSON.stringify(s)
+          });
+          setSettings((prev) => ({ ...prev, ...updated }));
+          return null;
+        } catch (err: any) {
+          return err.message || "Failed to update settings";
+        }
+      },
     }),
-    [menu, cart, orders, settings, setMenu, setOrders, setSettings],
+    [menu, cart, orders, settings, loading],
   );
 
   return <PosCtx.Provider value={value}>{children}</PosCtx.Provider>;

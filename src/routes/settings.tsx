@@ -1,14 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { LogOut, Loader2 } from "lucide-react";
 import { usePos } from "@/lib/pos-store";
+import { clearAuthToken } from "@/lib/api";
 import { AppShell, PageHeader } from "@/components/pos/AppShell";
 import { PasswordGate } from "@/components/pos/PasswordGate";
 
 export const Route = createFileRoute("/settings")({
   component: () => (
     <AppShell header={<PageHeader title="Settings" subtitle="Restaurant & billing config" />}>
-      <PasswordGate title="Settings Locked">
+      <PasswordGate title="Settings Locked" gateType="settings">
         <SettingsEditor />
       </PasswordGate>
     </AppShell>
@@ -18,10 +20,21 @@ export const Route = createFileRoute("/settings")({
 function SettingsEditor() {
   const { settings, updateSettings } = usePos();
   const [s, setS] = useState(settings);
+  const navigate = useNavigate();
 
-  function save() {
-    updateSettings(s);
-    toast.success("Settings saved");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    const err = await updateSettings(s);
+    setSaving(false);
+    
+    if (err) {
+      toast.error(err);
+    } else {
+      toast.success("Settings saved");
+      navigate({ to: "/" });
+    }
   }
 
   return (
@@ -95,9 +108,22 @@ function SettingsEditor() {
 
       <button
         onClick={save}
-        className="h-14 w-full rounded-2xl bg-brand text-base font-semibold text-brand-foreground shadow-lg shadow-brand/20 active:scale-[0.99]"
+        disabled={saving}
+        className="h-14 w-full flex items-center justify-center rounded-2xl bg-brand text-base font-semibold text-brand-foreground shadow-lg shadow-brand/20 active:scale-[0.99] disabled:opacity-70"
       >
-        Save Settings
+        {saving ? <Loader2 className="size-5 animate-spin" /> : "Save Settings"}
+      </button>
+
+      <button
+        onClick={() => {
+          clearAuthToken();
+          toast.info("Signed out successfully");
+          navigate({ to: "/login" });
+        }}
+        className="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-red-50 text-base font-semibold text-red-600 transition active:scale-[0.99] hover:bg-red-100 ring-1 ring-red-100"
+      >
+        <LogOut className="size-5" />
+        Sign Out
       </button>
     </div>
   );
