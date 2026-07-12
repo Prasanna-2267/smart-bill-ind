@@ -3,18 +3,20 @@ import { useState } from "react";
 import { LogIn, Eye, EyeOff } from "lucide-react";
 
 import { apiFetch, setAuthToken } from "../lib/api";
+import { usePos } from "../lib/pos-store";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
 function LoginPage() {
-  const [email, setEmail] = useState("prasanna@gmail.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { loadData } = usePos();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +29,7 @@ function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       setAuthToken(data.token);
+      await loadData();
       navigate({ to: "/" });
     } catch (err: any) {
       setError(err.message || "Failed to login");
@@ -36,8 +39,8 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
-      <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-[0_8px_40px_rgb(0,0,0,0.08)] ring-1 ring-border relative overflow-hidden">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 relative">
+      <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-[0_8px_40px_rgb(0,0,0,0.08)] ring-1 ring-border relative overflow-hidden z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent pointer-events-none" />
         
         <div className="relative z-10 mb-8 text-center">
@@ -98,6 +101,10 @@ function LoginPage() {
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
+      </div>
+      
+      <div className="absolute bottom-8 left-0 right-0 text-center z-0">
+        <p className="text-xs font-semibold tracking-wide text-zinc-400 uppercase">Powered by NeuralWeb Labs</p>
       </div>
     </div>
   );

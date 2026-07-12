@@ -81,27 +81,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1" },
-      { title: "Veda POS — Restaurant Billing System" },
+      { title: "NeuralWeb Labs POS Suite" },
       {
         name: "description",
         content:
           "Fast, mobile-first billing & POS for restaurants, cafés and bakeries. Menu, GST, AC charges, orders and sales trends in one clean app.",
       },
-      { property: "og:title", content: "Veda POS — Restaurant Billing System" },
+      { property: "og:title", content: "NeuralWeb Labs POS Suite" },
       {
         property: "og:description",
         content: "A premium, minimal POS built for Indian restaurants.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Veda POS — Restaurant Billing System" },
+      { name: "twitter:title", content: "NeuralWeb Labs POS Suite" },
       { name: "description", content: "Fast, mobile-first billing & POS for restaurants, cafés and bakeries. Menu, GST, AC charges, orders and sales trends in one clean app." },
       { property: "og:description", content: "Fast, mobile-first billing & POS for restaurants, cafés and bakeries. Menu, GST, AC charges, orders and sales trends in one clean app." },
       { name: "twitter:description", content: "Fast, mobile-first billing & POS for restaurants, cafés and bakeries. Menu, GST, AC charges, orders and sales trends in one clean app." },
     ],
     links: [
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
   shellComponent: RootShell,

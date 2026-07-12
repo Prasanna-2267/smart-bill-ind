@@ -67,6 +67,7 @@ type Ctx = {
   settings: Settings;
   updateSettings: (s: Partial<Settings>) => Promise<string | null>;
   loading: boolean;
+  loadData: () => Promise<void>;
 };
 
 const PosCtx = createContext<Ctx | null>(null);
@@ -78,31 +79,33 @@ export function PosProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
 
-  // Fetch initial data
-  useEffect(() => {
+  const loadData = async () => {
+    setLoading(true);
     const token = getAuthToken();
     if (!token) {
       setLoading(false);
       return;
     }
 
-    const loadData = async () => {
-      try {
-        const [menuData, settingsData, ordersData] = await Promise.allSettled([
-          apiFetch("/menu"),
-          apiFetch("/settings"),
-          apiFetch("/orders")
-        ]);
+    try {
+      const [menuData, settingsData, ordersData] = await Promise.allSettled([
+        apiFetch("/menu"),
+        apiFetch("/settings"),
+        apiFetch("/orders")
+      ]);
 
-        if (menuData.status === "fulfilled") setMenu(menuData.value);
-        if (settingsData.status === "fulfilled" && settingsData.value) setSettings(settingsData.value);
-        if (ordersData.status === "fulfilled") setOrders(ordersData.value);
-      } catch (err) {
-        console.error("Failed to fetch POS data", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+      if (menuData.status === "fulfilled") setMenu(menuData.value);
+      if (settingsData.status === "fulfilled" && settingsData.value) setSettings(settingsData.value);
+      if (ordersData.status === "fulfilled") setOrders(ordersData.value);
+    } catch (err) {
+      console.error("Failed to fetch POS data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch initial data
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -180,6 +183,7 @@ export function PosProvider({ children }: { children: ReactNode }) {
           return err.message || "Failed to update settings";
         }
       },
+      loadData,
     }),
     [menu, cart, orders, settings, loading],
   );

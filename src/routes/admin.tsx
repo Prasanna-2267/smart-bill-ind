@@ -99,7 +99,7 @@ function CreateHotelForm({ adminEmail, adminPassword }: any) {
       // NOTE: We don't use the standard apiFetch here if we don't have a hotel JWT,
       // because apiFetch sets Authorization: Bearer. 
       // But /api/admin/hotels doesn't require JWT, just admin creds in body!
-      const res = await fetch("http://localhost:5000/api/admin/hotels", {
+      const res = await fetch(`${API_BASE_URL}/admin/hotels`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

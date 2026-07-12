@@ -125,6 +125,10 @@ function SettingsEditor() {
         <LogOut className="size-5" />
         Sign Out
       </button>
+
+      <div className="pt-8 text-center">
+        <p className="text-[10px] font-bold tracking-widest text-zinc-300 uppercase">Powered by NeuralWeb Labs</p>
+      </div>
     </div>
   );
 }
