@@ -63,11 +63,19 @@ type Ctx = {
   setQty: (code: string, qty: number) => void;
   clearCart: () => void;
   orders: Order[];
+  trends: any;
+  ordersPage: number;
+  hasMoreOrders: boolean;
+  ordersSearchQuery: string;
+  isFetchingOrders: boolean;
   submitOrder: (paymentMode: string, diningType: string, isAC: boolean, items: {code: string, quantity: number}[]) => Promise<Order>;
   settings: Settings;
   updateSettings: (s: Partial<Settings>) => Promise<string | null>;
   loading: boolean;
+  updatePins: (pins: { menu?: string; settings?: string; trends?: string }) => Promise<string | null>;
   loadData: () => Promise<void>;
+  fetchNextOrdersPage: () => Promise<void>;
+  searchOrders: (query: string) => Promise<void>;
 };
 
 const PosCtx = createContext<Ctx | null>(null);
@@ -76,6 +84,11 @@ export function PosProvider({ children }: { children: ReactNode }) {
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<Cart>({});
   const [orders, setOrders] = useState<Order[]>([]);
+  const [trends, setTrends] = useState<any>(null);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [hasMoreOrders, setHasMoreOrders] = useState(true);
+  const [ordersSearchQuery, setOrdersSearchQuery] = useState("");
+  const [isFetchingOrders, setIsFetchingOrders] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
 
@@ -88,15 +101,20 @@ export function PosProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const [menuData, settingsData, ordersData] = await Promise.allSettled([
+      const [menuData, settingsData, ordersData, trendsData] = await Promise.allSettled([
         apiFetch("/menu"),
         apiFetch("/settings"),
-        apiFetch("/orders")
+        apiFetch("/orders?page=1&limit=20"),
+        apiFetch("/trends")
       ]);
 
       if (menuData.status === "fulfilled") setMenu(menuData.value);
       if (settingsData.status === "fulfilled" && settingsData.value) setSettings(settingsData.value);
-      if (ordersData.status === "fulfilled") setOrders(ordersData.value);
+      if (ordersData.status === "fulfilled") {
+        setOrders(ordersData.value.data);
+        setHasMoreOrders(ordersData.value.hasMore);
+      }
+      if (trendsData.status === "fulfilled") setTrends(trendsData.value);
     } catch (err) {
       console.error("Failed to fetch POS data", err);
     } finally {
@@ -113,6 +131,14 @@ export function PosProvider({ children }: { children: ReactNode }) {
     () => ({
       menu,
       loading,
+      orders,
+      trends,
+      ordersPage,
+      hasMoreOrders,
+      ordersSearchQuery,
+      isFetchingOrders,
+      cart,
+      settings,
       addMenu: async (m) => {
         try {
           const newItem = await apiFetch("/menu", {
@@ -183,9 +209,53 @@ export function PosProvider({ children }: { children: ReactNode }) {
           return err.message || "Failed to update settings";
         }
       },
+      updatePins: async (pins) => {
+        try {
+          await apiFetch("/auth/update-pins", {
+            method: "POST",
+            body: JSON.stringify(pins)
+          });
+          return null;
+        } catch (err: any) {
+          return err.message || "Failed to update pins";
+        } finally {
+          setLoading(false);
+        }
+      },
+      fetchNextOrdersPage: async () => {
+        if (isFetchingOrders || !hasMoreOrders) return;
+        setIsFetchingOrders(true);
+        try {
+          const nextPage = ordersPage + 1;
+          const q = encodeURIComponent(ordersSearchQuery);
+          const res = await apiFetch(`/orders?page=${nextPage}&limit=20&query=${q}`);
+          setOrders((prev) => [...prev, ...res.data]);
+          setOrdersPage(nextPage);
+          setHasMoreOrders(res.hasMore);
+        } catch (err) {
+          console.error("Failed to fetch next orders page", err);
+        } finally {
+          setIsFetchingOrders(false);
+        }
+      },
+      searchOrders: async (query: string) => {
+        setOrdersSearchQuery(query);
+        setIsFetchingOrders(true);
+        try {
+          const q = encodeURIComponent(query);
+          const res = await apiFetch(`/orders?page=1&limit=20&query=${q}`);
+          setOrders(res.data);
+          setOrdersPage(1);
+          setHasMoreOrders(res.hasMore);
+        } catch (err) {
+          console.error("Failed to search orders", err);
+        } finally {
+          setIsFetchingOrders(false);
+        }
+      },
       loadData,
     }),
-    [menu, cart, orders, settings, loading],
+    [menu, cart, orders, settings, loading, trends, ordersPage, hasMoreOrders, ordersSearchQuery, isFetchingOrders],
   );
 
   return <PosCtx.Provider value={value}>{children}</PosCtx.Provider>;
@@ -198,5 +268,5 @@ export function usePos() {
 }
 
 export function inr(n: number) {
-  return `₹${n.toLocaleString("en-IN")}`;
+  return `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

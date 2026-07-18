@@ -32,10 +32,10 @@ function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
-  const gstAmount = settings.gstEnabled ? Math.round(subtotal * (settings.gstPct / 100)) : 0;
   const acCharge =
     settings.acEnabled && orderType === "Dine-In" && acMode === "AC" ? settings.acCharge : 0;
-  const total = subtotal + gstAmount + acCharge;
+  const gstAmount = settings.gstEnabled ? ((subtotal + acCharge) * (settings.gstPct / 100)) : 0;
+  const total = Math.round(subtotal + gstAmount + acCharge);
 
   const showAc = settings.acEnabled && orderType === "Dine-In";
 

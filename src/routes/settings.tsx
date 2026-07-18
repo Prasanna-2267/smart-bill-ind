@@ -18,19 +18,29 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsEditor() {
-  const { settings, updateSettings } = usePos();
+  const { settings, updateSettings, updatePins } = usePos();
   const [s, setS] = useState(settings);
   const navigate = useNavigate();
 
+  const [pins, setPins] = useState({ menu: "", settings: "", trends: "" });
   const [saving, setSaving] = useState(false);
 
   async function save() {
     setSaving(true);
     const err = await updateSettings(s);
+    
+    let pinErr = null;
+    if (pins.menu || pins.settings || pins.trends) {
+      pinErr = await updatePins(pins);
+      if (!pinErr) {
+        setPins({ menu: "", settings: "", trends: "" });
+      }
+    }
+    
     setSaving(false);
     
-    if (err) {
-      toast.error(err);
+    if (err || pinErr) {
+      toast.error(err || pinErr);
     } else {
       toast.success("Settings saved");
       navigate({ to: "/" });
@@ -104,6 +114,35 @@ function SettingsEditor() {
             />
           </Field>
         )}
+      </Panel>
+
+      <Panel title="Security (Manager PINs)">
+        <div className="space-y-3">
+          <Field label="Menu Manager PIN">
+            <TextInput
+              inputMode="numeric"
+              value={pins.menu}
+              onChange={(v) => setPins({ ...pins, menu: v.replace(/\D/g, "").slice(0, 3) })}
+            />
+            <p className="mt-1 text-[10px] text-zinc-500">Leave blank to keep current PIN.</p>
+          </Field>
+          <Field label="Settings PIN">
+            <TextInput
+              inputMode="numeric"
+              value={pins.settings}
+              onChange={(v) => setPins({ ...pins, settings: v.replace(/\D/g, "").slice(0, 3) })}
+            />
+            <p className="mt-1 text-[10px] text-zinc-500">Leave blank to keep current PIN.</p>
+          </Field>
+          <Field label="Trends PIN">
+            <TextInput
+              inputMode="numeric"
+              value={pins.trends}
+              onChange={(v) => setPins({ ...pins, trends: v.replace(/\D/g, "").slice(0, 3) })}
+            />
+            <p className="mt-1 text-[10px] text-zinc-500">Leave blank to keep current PIN.</p>
+          </Field>
+        </div>
       </Panel>
 
       <button

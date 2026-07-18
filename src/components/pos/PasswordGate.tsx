@@ -8,7 +8,7 @@ export function PasswordGate({
   children,
 }: {
   title: string;
-  gateType: "menu" | "settings";
+  gateType: "menu" | "settings" | "trends";
   children: ReactNode;
 }) {
   const [unlocked, setUnlocked] = useState(false);
@@ -48,7 +48,7 @@ export function PasswordGate({
       >
         <input
           autoFocus
-          type="password"
+          type="text"
           inputMode="numeric"
           pattern="[0-9]{3}"
           maxLength={3}

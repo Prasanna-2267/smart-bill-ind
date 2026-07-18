@@ -10,23 +10,19 @@ export const Route = createFileRoute("/orders")({
 });
 
 function OrdersPage() {
-  const { orders } = usePos();
+  const { orders, trends, searchOrders, fetchNextOrdersPage, isFetchingOrders, hasMoreOrders } = usePos();
   const [query, setQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return orders;
-    return orders.filter(
-      (o) =>
-        o.billNo.toLowerCase().includes(q) ||
-        o.items.some((i) => i.name.toLowerCase().includes(q) || i.code.includes(q)) ||
-        new Date(o.date).toLocaleDateString("en-IN").includes(q),
-    );
-  }, [orders, query]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      searchOrders(query);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   return (
-    <AppShell header={<PageHeader title="Past Orders" subtitle={`${orders.length} total bills`} />}>
+    <AppShell header={<PageHeader title="Past Orders" subtitle={`${trends?.totalOrders || orders.length} total bills`} />}>
       <div className="sticky top-[73px] z-10 border-b border-border bg-surface/95 px-5 py-3 backdrop-blur">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
@@ -40,18 +36,18 @@ function OrdersPage() {
       </div>
 
       <div className="space-y-3 px-5 py-4 pb-8">
-        {filtered.length === 0 && (
+        {orders.length === 0 && (
           <div className="mt-16 flex flex-col items-center gap-3 text-center">
             <div className="grid size-14 place-items-center rounded-2xl bg-brand-soft text-brand">
               <Receipt className="size-6" />
             </div>
             <p className="text-sm text-zinc-500">
-              {orders.length === 0 ? "No orders yet. Generate your first bill." : "No matches."}
+              {query ? "No matches." : "No orders yet. Generate your first bill."}
             </p>
           </div>
         )}
 
-        {filtered.map((o) => {
+        {orders.map((o) => {
           const d = new Date(o.date);
           return (
             <article
@@ -103,6 +99,16 @@ function OrdersPage() {
             </article>
           );
         })}
+
+        {hasMoreOrders && orders.length > 0 && (
+          <button
+            onClick={() => fetchNextOrdersPage()}
+            disabled={isFetchingOrders}
+            className="w-full rounded-2xl bg-zinc-100 py-3 text-sm font-semibold text-zinc-600 transition active:scale-[0.99] hover:bg-zinc-200 disabled:opacity-50 mt-4"
+          >
+            {isFetchingOrders ? "Loading..." : "Load More"}
+          </button>
+        )}
       </div>
 
       {selectedOrder && (
