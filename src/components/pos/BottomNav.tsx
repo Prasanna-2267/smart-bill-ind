@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Receipt, ClipboardList, LineChart, UtensilsCrossed, Settings } from "lucide-react";
+import { Receipt, ClipboardList, LineChart, UtensilsCrossed, Settings, CloudOff } from "lucide-react";
+import { usePos } from "../../lib/pos-store";
 
 const TABS = [
   { to: "/", label: "Billing", icon: Receipt },
@@ -11,6 +12,7 @@ const TABS = [
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { offlineSyncQueue } = usePos();
   
   if (pathname === "/login") return null;
 
@@ -23,7 +25,7 @@ export function BottomNav() {
             <Link
               key={to}
               to={to}
-              className="group flex min-w-[56px] flex-col items-center gap-1 rounded-lg px-2 py-1.5"
+              className="relative group flex min-w-[56px] flex-col items-center gap-1 rounded-lg px-2 py-1.5"
             >
               <Icon
                 className={`size-[22px] transition-colors ${
@@ -38,6 +40,12 @@ export function BottomNav() {
               >
                 {label}
               </span>
+              
+              {to === "/orders" && offlineSyncQueue && offlineSyncQueue.length > 0 && (
+                <div className="absolute top-1 right-2 flex items-center justify-center rounded-full bg-red-500 w-4 h-4 shadow-sm border border-white">
+                  <CloudOff className="size-2.5 text-white" />
+                </div>
+              )}
             </Link>
           );
         })}

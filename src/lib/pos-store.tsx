@@ -76,12 +76,21 @@ type Ctx = {
   loadData: () => Promise<void>;
   fetchNextOrdersPage: () => Promise<void>;
   searchOrders: (query: string) => Promise<void>;
+  offlineSyncQueue: Order[];
+  syncOfflineOrders: () => Promise<void>;
 };
 
 const PosCtx = createContext<Ctx | null>(null);
 
 export function PosProvider({ children }: { children: ReactNode }) {
-  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [menu, setMenu] = useState<MenuItem[]>(() => {
+    try {
+      const stored = localStorage.getItem("pos_menu");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
   const [cart, setCart] = useState<Cart>({});
   const [orders, setOrders] = useState<Order[]>([]);
   const [trends, setTrends] = useState<any>(null);
@@ -89,8 +98,54 @@ export function PosProvider({ children }: { children: ReactNode }) {
   const [hasMoreOrders, setHasMoreOrders] = useState(true);
   const [ordersSearchQuery, setOrdersSearchQuery] = useState("");
   const [isFetchingOrders, setIsFetchingOrders] = useState(false);
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<Settings>(() => {
+    try {
+      const stored = localStorage.getItem("pos_settings");
+      return stored ? JSON.parse(stored) : DEFAULT_SETTINGS;
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
+  });
+  const [offlineSyncQueue, setOfflineSyncQueue] = useState<Order[]>(() => {
+    try {
+      const stored = localStorage.getItem("pos_offline_queue");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    localStorage.setItem("pos_menu", JSON.stringify(menu));
+  }, [menu]);
+
+  useEffect(() => {
+    localStorage.setItem("pos_settings", JSON.stringify(settings));
+  }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem("pos_offline_queue", JSON.stringify(offlineSyncQueue));
+  }, [offlineSyncQueue]);
+
+  const syncOfflineOrders = async () => {
+    if (offlineSyncQueue.length === 0) return;
+    try {
+      await apiFetch("/orders/bulk-sync", {
+        method: "POST",
+        body: JSON.stringify({ orders: offlineSyncQueue })
+      });
+      setOfflineSyncQueue([]);
+    } catch (error) {
+      console.log("Failed to sync offline orders, keeping in queue");
+    }
+  };
+
+  useEffect(() => {
+    const handleOnline = () => syncOfflineOrders();
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [offlineSyncQueue]);
 
   const loadData = async () => {
     setLoading(true);
@@ -138,6 +193,8 @@ export function PosProvider({ children }: { children: ReactNode }) {
       ordersSearchQuery,
       isFetchingOrders,
       cart,
+      offlineSyncQueue,
+      syncOfflineOrders,
       settings,
       addMenu: async (m) => {
         try {
@@ -189,11 +246,54 @@ export function PosProvider({ children }: { children: ReactNode }) {
       clearCart: () => setCart({}),
       orders,
       submitOrder: async (paymentMode, diningType, isAC, items) => {
-        const newOrder = await apiFetch("/orders", {
-          method: "POST",
-          body: JSON.stringify({ paymentMode, diningType, isAC, items })
-        });
+        let subtotal = 0;
+        const orderItems = [];
+        for (const item of items) {
+          const menuItem = menu.find(m => m.code === item.code);
+          if (!menuItem) continue;
+          subtotal += menuItem.price * item.quantity;
+          orderItems.push({
+            id: Math.random().toString(36).substring(2, 9),
+            code: menuItem.code,
+            name: menuItem.name,
+            price: menuItem.price,
+            qty: item.quantity
+          });
+        }
+
+        let acChargeAmount = 0;
+        if (diningType === "Dine-In" && isAC && settings.acEnabled) {
+          acChargeAmount = settings.acCharge;
+        }
+
+        let gstAmount = 0;
+        if (settings.gstEnabled && settings.gstPct > 0) {
+          gstAmount = ((subtotal + acChargeAmount) * settings.gstPct) / 100;
+        }
+
+        const total = Math.round(subtotal + acChargeAmount + gstAmount);
+        
+        const newOrder: Order = {
+          id: Math.random().toString(36).substring(2, 15),
+          billNo: `OFF-${Date.now().toString().slice(-6)}`,
+          date: new Date().toISOString(),
+          subtotal,
+          gstPct: settings.gstEnabled ? settings.gstPct : 0,
+          gstAmount,
+          acCharge: acChargeAmount,
+          total,
+          paymentMode: paymentMode as PaymentMode,
+          orderType: diningType as OrderType,
+          acMode: (isAC ? "AC" : "Non-AC") as AcMode,
+          items: orderItems
+        };
+
         setOrders((prev) => [newOrder, ...prev]);
+        setOfflineSyncQueue((prev) => [...prev, newOrder]);
+        
+        // Async background sync
+        setTimeout(() => syncOfflineOrders(), 0);
+        
         return newOrder;
       },
       settings,

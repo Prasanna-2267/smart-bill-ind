@@ -5,8 +5,9 @@ export function BillDialog({ order, onClose }: { order: Order; onClose: () => vo
   const { settings } = usePos();
   const d = new Date(order.date);
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center">
-      <div className="w-full max-w-md rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl">
+    <>
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center no-print">
+        <div className="w-full max-w-md rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl">
         <div className="mb-4 flex items-center justify-between">
           <span className="rounded-full bg-brand-soft px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-brand">
             Paid · {order.paymentMode}
@@ -86,6 +87,64 @@ export function BillDialog({ order, onClose }: { order: Order; onClose: () => vo
         </div>
       </div>
     </div>
+
+    <div className="print-only" style={{ width: '80mm', margin: '0', color: 'black', fontFamily: 'monospace', fontSize: '12px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0' }}>{settings.restaurantName}</h3>
+        <p style={{ margin: '2px 0' }}>{settings.address}</p>
+        <p style={{ margin: '2px 0' }}>Ph: {settings.phone}</p>
+        {settings.gstEnabled && settings.gstNumber && <p style={{ margin: '2px 0' }}>GSTIN: {settings.gstNumber}</p>}
+      </div>
+      <div style={{ borderTop: '1px dashed black', borderBottom: '1px dashed black', padding: '5px 0', margin: '10px 0', display: 'flex', justifyContent: 'space-between' }}>
+        <span>Bill #{order.billNo}</span>
+        <span>{d.toLocaleDateString("en-IN")} {d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
+      </div>
+      
+      <table style={{ width: '100%', marginBottom: '10px', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px dashed black' }}>
+            <th style={{ textAlign: 'left', paddingBottom: '5px', fontWeight: 'normal' }}>Item</th>
+            <th style={{ textAlign: 'right', paddingBottom: '5px', fontWeight: 'normal' }}>Qty</th>
+            <th style={{ textAlign: 'right', paddingBottom: '5px', fontWeight: 'normal' }}>Amt</th>
+          </tr>
+        </thead>
+        <tbody>
+          {order.items.map(l => (
+            <tr key={l.code}>
+              <td style={{ padding: '2px 0' }}>{l.name}</td>
+              <td style={{ textAlign: 'right' }}>{l.qty}</td>
+              <td style={{ textAlign: 'right' }}>{inr(l.price * l.qty)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      
+      <div style={{ borderTop: '1px dashed black', paddingTop: '5px', marginTop: '5px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Subtotal</span><span>{inr(order.subtotal)}</span>
+        </div>
+        {order.gstPct > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>GST ({order.gstPct}%)</span><span>{inr(order.gstAmount)}</span>
+          </div>
+        )}
+        {order.acCharge > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>AC Charges</span><span>{inr(order.acCharge)}</span>
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '5px', borderTop: '1px solid black', paddingTop: '5px' }}>
+          <span>Total</span><span>{inr(order.total)}</span>
+        </div>
+      </div>
+      
+      <div style={{ textAlign: 'center', marginTop: '15px' }}>
+        <p style={{ margin: '2px 0' }}>{order.orderType}{order.acMode ? ` (${order.acMode})` : ''}</p>
+        <p style={{ margin: '2px 0' }}>Paid: {order.paymentMode}</p>
+        <p style={{ margin: '10px 0 0 0', fontStyle: 'italic' }}>{settings.footer}</p>
+      </div>
+    </div>
+  </>
   );
 }
 

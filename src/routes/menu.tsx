@@ -102,6 +102,7 @@ function MenuEditor() {
 
       {(editing || creating) && (
         <ItemForm
+          menu={menu}
           initial={editing ?? undefined}
           onClose={() => {
             setEditing(null);
@@ -123,25 +124,39 @@ function MenuEditor() {
 }
 
 function ItemForm({
+  menu,
   initial,
   onClose,
   onSubmit,
 }: {
+  menu: MenuItem[];
   initial?: MenuItem;
   onClose: () => void;
   onSubmit: (item: MenuItem) => Promise<boolean>;
 }) {
+  const categories = useMemo(() => {
+    return Array.from(new Set([...CATEGORIES, ...menu.map(m => m.category)]));
+  }, [menu]);
+
   const [code, setCode] = useState(initial?.code ?? "");
   const [name, setName] = useState(initial?.name ?? "");
   const [price, setPrice] = useState(initial?.price.toString() ?? "");
-  const [category, setCategory] = useState(initial?.category ?? CATEGORIES[0]);
+  
+  // Initialize category. If initial category is not in list, it will default to it anyway
+  const [category, setCategory] = useState(initial?.category ?? categories[0]);
+  const [customCategory, setCustomCategory] = useState("");
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center">
       <form
         onSubmit={async (e) => {
           e.preventDefault();
-          const ok = await onSubmit({ code, name: name.trim(), price: Number(price), category });
+          const finalCategory = category === "Other" ? customCategory.trim() : category;
+          if (!finalCategory) {
+            toast.error("Please enter a category name");
+            return;
+          }
+          const ok = await onSubmit({ code, name: name.trim(), price: Number(price), category: finalCategory });
           if (ok) onClose();
         }}
         className="w-full max-w-md rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl"
@@ -191,15 +206,31 @@ function ItemForm({
               />
             </Field>
             <Field label="Category">
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="h-12 w-full rounded-xl bg-zinc-100 px-3 text-base outline-none focus:ring-2 focus:ring-brand/30"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
+              <div className="space-y-2">
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    if (e.target.value !== "Other") setCustomCategory("");
+                  }}
+                  className="h-12 w-full rounded-xl bg-zinc-100 px-3 text-base outline-none focus:ring-2 focus:ring-brand/30"
+                >
+                  {categories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                  <option value="Other">Other...</option>
+                </select>
+                {category === "Other" && (
+                  <input
+                    required
+                    autoFocus
+                    placeholder="Type new category..."
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    className="h-12 w-full rounded-xl bg-zinc-100 px-4 text-base outline-none focus:ring-2 focus:ring-brand/30"
+                  />
+                )}
+              </div>
             </Field>
           </div>
         </div>

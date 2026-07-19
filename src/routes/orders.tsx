@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Search, Receipt } from "lucide-react";
 import { usePos, inr, type Order } from "@/lib/pos-store";
 import { AppShell, PageHeader } from "@/components/pos/AppShell";

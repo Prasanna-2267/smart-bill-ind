@@ -68,6 +68,11 @@ function CheckoutPage() {
       );
       setBill(order);
       clearCart();
+      
+      // Auto trigger print dialog shortly after modal renders
+      setTimeout(() => {
+        window.print();
+      }, 300);
     } catch (err: any) {
       toast.error(err.message || "Failed to submit order.");
     } finally {

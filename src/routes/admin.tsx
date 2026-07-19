@@ -29,8 +29,14 @@ function AdminPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (adminEmail && adminPassword) {
+              const allowedEmailsStr = import.meta.env.VITE_ADMIN_EMAILS || "";
+              const ALLOWED_EMAILS = allowedEmailsStr.split(",").map(s => s.trim());
+              const adminPasswordEnv = import.meta.env.VITE_ADMIN_PASSWORD;
+              
+              if (ALLOWED_EMAILS.includes(adminEmail) && adminPassword === adminPasswordEnv) {
                 setIsAdminAuth(true);
+              } else {
+                toast.error("Unauthorized. Invalid Admin Credentials");
               }
             }}
             className="space-y-4"

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { LogOut, Loader2 } from "lucide-react";
 import { usePos } from "@/lib/pos-store";
-import { clearAuthToken } from "@/lib/api";
+import { clearAuthToken, apiFetch } from "@/lib/api";
 import { AppShell, PageHeader } from "@/components/pos/AppShell";
 import { PasswordGate } from "@/components/pos/PasswordGate";
 
@@ -154,7 +154,10 @@ function SettingsEditor() {
       </button>
 
       <button
-        onClick={() => {
+        onClick={async () => {
+          try {
+            await apiFetch("/auth/logout", { method: "POST" });
+          } catch (e) {} // ignore errors on logout
           clearAuthToken();
           toast.info("Signed out successfully");
           navigate({ to: "/login" });
